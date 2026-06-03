@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nhà hàng KMA - Đặt đồ ăn</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-copy">
+        <span class="hero-badge">Giao hàng nhanh • Thực đơn mới</span>
+        <h1>🍜 NHÀ HÀNG KMA</h1>
+        <p>
+          Chọn món, đặt bàn và nhận ngay những hương vị thơm ngon, hấp dẫn cho
+          bữa ăn của bạn.
+        </p>
+        <div class="hero-meta">
+          <div><strong id="tableNumber"></strong></div>
+          <div class="hero-note"></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="hero-features">
+      <div class="feature-chip">🌿 Nguyên liệu tươi sạch</div>
+      <div class="feature-chip">⚡ Phục vụ nhanh chóng</div>
+      <div class="feature-chip">💳 Thanh toán online & tại quán</div>
+    </div>
+
+    <main class="main-grid">
+      <section class="menu-panel">
+        <div class="section-heading">
+          <h2>Thực đơn gợi ý</h2>
+          <p>
+            Thêm nhanh món yêu thích vào giỏ hàng, chúng tôi sẽ lo phần còn lại.
+          </p>
+        </div>
+        <div id="menu" class="menu-grid"></div>
+      </section>
+
+      <aside class="cart-box">
+        <div class="section-heading">
+          <h2>🛒 Giỏ hàng</h2>
+          <p>Kiểm tra lại đơn của bạn trước khi thanh toán.</p>
+        </div>
+        <div id="cart" class="cart-list"></div>
+        <div class="cart-summary">
+          <h3 id="totalPrice">Tổng: 0 đ</h3>
+          <div class="cart-actions">
+            <button class="primary" onclick="submitOrder()">Đặt món</button>
+            <button class="secondary" onclick="payment()">Thanh toán</button>
+          </div>
+        </div>
+
+        <div id="paymentModal" class="payment-modal">
+          <div class="payment-modal-content">
+            <button class="close-modal" onclick="closePaymentModal()">×</button>
+            <h2>Quét mã MoMo để thanh toán</h2>
+            <p id="paymentAmountText">
+              Số tiền cần thanh toán sẽ hiển thị ở đây.
+            </p>
+            <img id="paymentQrImage" src="" alt="Mã QR MoMo" />
+            <p id="paymentLinkText"></p>
+            <div class="modal-actions">
+              <button class="secondary" onclick="confirmMomoPayment()">
+                Đã thanh toán
+              </button>
+              <button class="primary" onclick="closePaymentModal()">
+                Đóng
+              </button>
+            </div>
+            <p class="payment-help">
+              Quét mã với ứng dụng MoMo. Nếu mã QR không hiển thị, bạn có thể mở
+              liên kết MoMo bên trên.
+            </p>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
