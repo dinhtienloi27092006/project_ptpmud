@@ -7,8 +7,23 @@ const paymentAmountText = document.getElementById("paymentAmountText");
 const paymentQrImage = document.getElementById("paymentQrImage");
 const paymentLinkText = document.getElementById("paymentLinkText");
 
+console.log("app.js loaded");
+
 let foods = [];
 let cart = [];
+let activeCategory = "";
+let sortOrder = "";
+const DEFAULT_CATEGORIES = [
+  "",
+  "Món chính",
+  "Hải sản",
+  "Lẩu",
+  "Nướng",
+  "Món thêm",
+  "Tráng miệng",
+  "Nước uống",
+  "Combo",
+];
 let currentOrderId = null;
 let currentPaymentOrderId = null;
 
@@ -36,10 +51,19 @@ fetch("/api/foods")
   .then((data) => {
     foods = data;
     renderMenu();
+    populateCategoryButtons();
+    setupFilters();
   })
   .catch((error) => {
     console.error("Lỗi load menu:", error);
     menuDiv.innerHTML = `<h2>Không thể tải menu</h2>`;
+    // Initialize the static category buttons and filters so UI remains usable when API is down
+    try {
+      populateCategoryButtons();
+      setupFilters();
+    } catch (e) {
+      console.warn("Không thể khởi tạo bộ lọc tĩnh:", e);
+    }
   });
 
 /*
@@ -49,21 +73,183 @@ fetch("/api/foods")
 function renderMenu() {
   menuDiv.innerHTML = "";
 
-  foods.forEach((food) => {
-    const card = document.createElement("div");
+  const orderedFoods = [...foods];
+  if (sortOrder === "asc") {
+    orderedFoods.sort((a, b) => (a.price || 0) - (b.price || 0));
+  } else if (sortOrder === "desc") {
+    orderedFoods.sort((a, b) => (b.price || 0) - (a.price || 0));
+  }
 
+  orderedFoods.forEach((food) => {
+    const card = document.createElement("div");
     card.className = "food-card";
-    card.innerHTML = `
-            <img src="${food.image}" alt="${food.name}">
-            <div class="food-card-content">
-              <h3>${food.name}</h3>
-              <p class="price-tag">${food.price.toLocaleString()} đ</p>
-              <button onclick="addToCart(${food.id})">Thêm vào giỏ</button>
-            </div>
-        `;
+    card.id = "food-" + food.id;
+    card.dataset.category = (food.category || "").toLowerCase();
+
+    const img = document.createElement("img");
+    img.src = food.image || "";
+    img.alt = food.name || "";
+
+    const content = document.createElement("div");
+    content.className = "food-card-content";
+
+    const h3 = document.createElement("h3");
+    h3.textContent = food.name || "";
+
+    const catLabel = document.createElement("div");
+    catLabel.className = "food-category";
+    catLabel.textContent = food.category || "";
+
+    const p = document.createElement("p");
+    p.className = "price-tag";
+    p.textContent = (food.price || 0).toLocaleString() + " đ";
+
+    const btn = document.createElement("button");
+    btn.textContent = "Thêm vào giỏ";
+    btn.onclick = () => addToCart(food.id);
+
+    content.appendChild(h3);
+    content.appendChild(catLabel);
+    content.appendChild(p);
+    content.appendChild(btn);
+
+    card.appendChild(img);
+    card.appendChild(content);
 
     menuDiv.appendChild(card);
   });
+}
+
+function populateCategoryButtons() {
+  const container = document.getElementById("categoryFilters");
+  const sortContainer = document.getElementById("sortButtons");
+  if (!container) return;
+
+  const existingButtons = Array.from(container.querySelectorAll(".filter-btn"));
+
+  if (existingButtons.length === 0) {
+    DEFAULT_CATEGORIES.forEach((c, idx) => {
+      const b = document.createElement("button");
+      b.className = "filter-btn";
+      b.setAttribute("data-category", c);
+      b.textContent = c === "" ? "Tất cả" : c;
+      if (idx === 0) b.classList.add("active");
+      b.addEventListener("click", () => setActiveCategory(c));
+      container.appendChild(b);
+    });
+  } else {
+    existingButtons.forEach((btn) => {
+      const category = btn.getAttribute("data-category") || "";
+      btn.addEventListener("click", () => setActiveCategory(category));
+    });
+  }
+
+  container.style.zIndex = 20;
+  attachFilterDebugVisuals(container);
+
+  if (sortContainer) {
+    const sortButtons = Array.from(sortContainer.querySelectorAll(".sort-btn"));
+    sortButtons.forEach((btn) => {
+      btn.addEventListener("click", () =>
+        setSortOrder(btn.getAttribute("data-sort") || ""),
+      );
+    });
+  }
+}
+
+function setupFilters() {
+  const search = document.getElementById("foodSearch");
+
+  if (search) {
+    search.addEventListener("input", () => filterFoods());
+  }
+}
+
+function setActiveCategory(category) {
+  activeCategory = category || "";
+  document.querySelectorAll(".filter-btn").forEach((btn) => {
+    btn.classList.toggle(
+      "active",
+      (btn.getAttribute("data-category") || "") === activeCategory,
+    );
+  });
+
+  filterFoods();
+  if (activeCategory) {
+    scrollToCategory(activeCategory);
+  }
+}
+
+function setSortOrder(order) {
+  sortOrder = order === sortOrder ? "" : order;
+  document.querySelectorAll(".sort-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-sort") === sortOrder);
+  });
+  renderMenu();
+  filterFoods();
+}
+
+function attachFilterDebugVisuals(container) {
+  if (!container) return;
+  const btns = container.querySelectorAll(".filter-btn");
+  btns.forEach((b) => {
+    // avoid attaching multiple times
+    if (b.dataset.debugAttached) return;
+    b.dataset.debugAttached = "1";
+
+    b.addEventListener("mousedown", () => {
+      b.style.transform = "scale(0.98)";
+      b.style.filter = "brightness(0.98)";
+    });
+    b.addEventListener("mouseup", () => {
+      setTimeout(() => {
+        b.style.transform = "";
+        b.style.filter = "";
+      }, 180);
+    });
+
+    b.addEventListener("click", (e) => {
+      console.debug(
+        "Debug: button click registered on",
+        b.getAttribute("data-category"),
+      );
+      // flash background to make it obvious
+      const prev = b.style.boxShadow;
+      b.style.boxShadow = "0 0 0 3px rgba(255, 122, 24, 0.18)";
+      setTimeout(() => (b.style.boxShadow = prev), 300);
+    });
+  });
+}
+
+function filterFoods(category = null) {
+  const q = (document.getElementById("foodSearch")?.value || "").toLowerCase();
+  const effectiveCategory = category === null ? activeCategory : category;
+  console.debug("filterFoods", { effectiveCategory, query: q });
+  const cards = Array.from(menuDiv.children);
+
+  cards.forEach((card) => {
+    const name = (card.querySelector("h3")?.textContent || "").toLowerCase();
+    const cat = (card.dataset.category || "").toLowerCase();
+
+    const matchesQuery = q === "" || name.includes(q);
+    let matchesCategory = true;
+    if (effectiveCategory && effectiveCategory !== "") {
+      matchesCategory = cat === effectiveCategory.toLowerCase();
+    }
+
+    card.style.display = matchesQuery && matchesCategory ? "block" : "none";
+  });
+}
+
+function scrollToCategory(category) {
+  const cat = (category || "").toLowerCase();
+  const cards = Array.from(menuDiv.children);
+  const first = cards.find(
+    (c) => (c.dataset.category || "") === cat && c.style.display !== "none",
+  );
+  if (first) {
+    first.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 /*
@@ -363,4 +549,17 @@ function notifyPaymentUpdate() {
       JSON.stringify({ tableId, timestamp: Date.now() }),
     );
   }
+}
+
+if (typeof window !== "undefined") {
+  window.handleCategoryButtonClick = handleCategoryButtonClick;
+  window.filterFoods = filterFoods;
+  window.submitOrder = submitOrder;
+  window.payment = payment;
+  window.closePaymentModal = closePaymentModal;
+  window.confirmMomoPayment = confirmMomoPayment;
+  window.addToCart = addToCart;
+  window.increaseQuantity = increaseQuantity;
+  window.decreaseQuantity = decreaseQuantity;
+  window.removeItem = removeItem;
 }

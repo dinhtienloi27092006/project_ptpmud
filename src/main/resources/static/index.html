@@ -32,9 +32,57 @@
       <section class="menu-panel">
         <div class="section-heading">
           <h2>Thực đơn gợi ý</h2>
-          <p>
-            Thêm nhanh món yêu thích vào giỏ hàng, chúng tôi sẽ lo phần còn lại.
-          </p>
+          <p></p>
+        </div>
+        <div
+          class="menu-toolbar"
+          style="
+            margin-bottom: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+          "
+        >
+          <input
+            id="foodSearch"
+            placeholder="Tìm món..."
+            style="
+              flex: 1;
+              padding: 8px;
+              border-radius: 6px;
+              border: 1px solid #ccc;
+            "
+          />
+          <div
+            id="categoryFilters"
+            style="display: flex; gap: 6px; margin-left: 8px; flex-wrap: wrap"
+          >
+            <button class="filter-btn active" data-category="">Tất cả</button>
+            <button class="filter-btn" data-category="Món chính">
+              Món chính
+            </button>
+            <button class="filter-btn" data-category="Hải sản">Hải sản</button>
+            <button class="filter-btn" data-category="Lẩu">Lẩu</button>
+            <button class="filter-btn" data-category="Nướng">Nướng</button>
+            <button class="filter-btn" data-category="Món thêm">
+              Món thêm
+            </button>
+            <button class="filter-btn" data-category="Tráng miệng">
+              Tráng miệng
+            </button>
+            <button class="filter-btn" data-category="Nước uống">
+              Nước uống
+            </button>
+            <button class="filter-btn" data-category="Combo">Combo</button>
+          </div>
+          <div
+            id="sortButtons"
+            style="display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap"
+          >
+            <button class="sort-btn" data-sort="asc">Giá tăng dần</button>
+            <button class="sort-btn" data-sort="desc">Giá giảm dần</button>
+          </div>
         </div>
         <div id="menu" class="menu-grid"></div>
       </section>

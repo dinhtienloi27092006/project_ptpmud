@@ -12,11 +12,71 @@
         background: #f5f5f5;
       }
 
+      .form-card {
+        background: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+
+      .form-row {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 12px;
+      }
+
+      .form-row label {
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+
+      .form-row input {
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+      }
+
       .order-card {
         background: white;
         padding: 20px;
         margin-bottom: 20px;
         border-radius: 10px;
+      }
+
+      .food-editor-card {
+        background: #fafafa;
+        padding: 16px;
+        margin-bottom: 16px;
+        border-radius: 10px;
+        border: 1px solid #ddd;
+      }
+
+      .food-editor-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .food-editor-row input {
+        flex: 1 1 180px;
+      }
+
+      .food-editor-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .delete-btn {
+        background-color: #f44336;
+      }
+
+      .delete-btn:hover {
+        background-color: #d32f2f;
       }
 
       .order-item {
@@ -61,6 +121,14 @@
         transform: scale(0.95);
       }
 
+      .checkout-btn.delete-btn {
+        background-color: #f44336;
+      }
+
+      .checkout-btn.delete-btn:hover {
+        background-color: #d32f2f;
+      }
+
       .order-card.pending {
         border-left: 5px solid #ff5252;
       }
@@ -75,7 +143,70 @@
   </head>
 
   <body>
-    <h1>📦 Danh sách Order</h1>
+    <h1>📦 Admin quản lý</h1>
+
+    <section class="form-card">
+      <label
+        class="form-row"
+        style="flex-direction: row; align-items: center; gap: 12px"
+      >
+        <input
+          id="editMenuToggle"
+          type="checkbox"
+          onchange="toggleMenuEditor(this.checked)"
+        />
+        <span style="font-size: 16px; font-weight: 600"
+          >Bật chế độ sửa menu</span
+        >
+      </label>
+
+      <div id="menuEditor" style="display: none; margin-top: 20px">
+        <h2>➕ Thêm món mới</h2>
+        <form
+          id="addFoodForm"
+          onsubmit="
+            event.preventDefault();
+            submitNewFood();
+          "
+        >
+          <div class="form-row">
+            <label for="foodName">Tên món</label>
+            <input id="foodName" type="text" required />
+          </div>
+
+          <div class="form-row">
+            <label for="foodPrice">Giá tiền</label>
+            <input id="foodPrice" type="number" min="0" step="0.01" required />
+          </div>
+
+          <div class="form-row">
+            <label for="foodImage">Ảnh (URL)</label>
+            <input id="foodImage" type="text" required />
+          </div>
+
+          <div class="form-row">
+            <label for="foodCategory">Danh mục (tùy chọn)</label>
+            <input
+              id="foodCategory"
+              type="text"
+              placeholder="Ví dụ: Món chính, Tráng miệng, "
+            />
+          </div>
+
+          <button type="submit" class="checkout-btn">Lưu món mới</button>
+          <span
+            id="addFoodMessage"
+            style="margin-left: 16px; color: #2e7d32"
+          ></span>
+        </form>
+
+        <div style="margin-top: 30px">
+          <h2>📝 Danh sách món hiện có</h2>
+          <div id="foodEditorList"></div>
+          <span id="foodEditorMessage" style="color: #2e7d32"></span>
+        </div>
+      </div>
+    </section>
 
     <div
       style="
@@ -236,6 +367,235 @@
             loadOrders();
           }
         });
+      }
+
+      let foods = [];
+
+      function loadFoods() {
+        fetch("/api/foods")
+          .then((res) => res.json())
+          .then((data) => {
+            foods = data;
+            const menuEditor = document.getElementById("menuEditor");
+            if (menuEditor && menuEditor.style.display !== "none") {
+              renderFoodEditorList();
+            }
+          })
+          .catch((error) => {
+            console.error("Lỗi load menu food:", error);
+          });
+      }
+
+      function toggleMenuEditor(enabled) {
+        const menuEditor = document.getElementById("menuEditor");
+        if (menuEditor) {
+          menuEditor.style.display = enabled ? "block" : "none";
+        }
+        if (enabled) {
+          loadFoods();
+        }
+      }
+
+      function renderFoodEditorList() {
+        const foodEditorList = document.getElementById("foodEditorList");
+        const foodEditorMessage = document.getElementById("foodEditorMessage");
+        foodEditorMessage.textContent = "";
+        foodEditorList.innerHTML = "";
+
+        if (!foods.length) {
+          foodEditorList.innerHTML =
+            "<p>Không có món nào. Hãy thêm món mới.</p>";
+          return;
+        }
+
+        foods.forEach((food) => {
+          const card = document.createElement("div");
+          card.className = "food-editor-card";
+
+          const row = document.createElement("div");
+          row.className = "food-editor-row";
+
+          const nameInput = document.createElement("input");
+          nameInput.id = "edit-name-" + food.id;
+          nameInput.type = "text";
+          nameInput.value = food.name || "";
+
+          const priceInput = document.createElement("input");
+          priceInput.id = "edit-price-" + food.id;
+          priceInput.type = "number";
+          priceInput.min = "0";
+          priceInput.step = "0.01";
+          priceInput.value = food.price || 0;
+
+          const imageInput = document.createElement("input");
+          imageInput.id = "edit-image-" + food.id;
+          imageInput.type = "text";
+          imageInput.placeholder = "Ảnh URL";
+          imageInput.value = food.image || "";
+
+          const categoryInput = document.createElement("input");
+          categoryInput.id = "edit-category-" + food.id;
+          categoryInput.type = "text";
+          categoryInput.placeholder = "Danh mục";
+          categoryInput.value = food.category || "";
+
+          row.appendChild(nameInput);
+          row.appendChild(priceInput);
+          row.appendChild(imageInput);
+          row.appendChild(categoryInput);
+
+          const actions = document.createElement("div");
+          actions.className = "food-editor-actions";
+
+          const saveBtn = document.createElement("button");
+          saveBtn.className = "checkout-btn";
+          saveBtn.type = "button";
+          saveBtn.textContent = "Lưu";
+          saveBtn.onclick = () => saveFood(food.id);
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "checkout-btn delete-btn";
+          deleteBtn.type = "button";
+          deleteBtn.textContent = "Xóa";
+          deleteBtn.onclick = () => deleteFood(food.id);
+
+          actions.appendChild(saveBtn);
+          actions.appendChild(deleteBtn);
+
+          card.appendChild(row);
+          card.appendChild(actions);
+          foodEditorList.appendChild(card);
+        });
+      }
+
+      function saveFood(foodId) {
+        const name = document
+          .getElementById(`edit-name-${foodId}`)
+          .value.trim();
+        const price = parseFloat(
+          document.getElementById(`edit-price-${foodId}`).value,
+        );
+        const image = document
+          .getElementById(`edit-image-${foodId}`)
+          .value.trim();
+        const category = document
+          .getElementById(`edit-category-${foodId}`)
+          .value.trim();
+        const foodEditorMessage = document.getElementById("foodEditorMessage");
+
+        if (!name || !image || Number.isNaN(price) || price < 0) {
+          alert("Vui lòng điền tên, giá và ảnh hợp lệ.");
+          return;
+        }
+
+        fetch(`/api/foods/${foodId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            price,
+            image,
+            category,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok) {
+              return res.text().then((text) => {
+                throw new Error(text || "Lỗi cập nhật món");
+              });
+            }
+            return res.json();
+          })
+          .then((updatedFood) => {
+            foodEditorMessage.textContent = `Đã cập nhật món: ${updatedFood.name}`;
+            loadFoods();
+            setTimeout(() => {
+              foodEditorMessage.textContent = "";
+            }, 5000);
+          })
+          .catch((error) => {
+            console.error("Lỗi cập nhật món:", error);
+            alert(`Cập nhật món thất bại: ${error.message}`);
+          });
+      }
+
+      function deleteFood(foodId) {
+        if (!confirm("Bạn có chắc muốn xóa món này không?")) {
+          return;
+        }
+
+        fetch(`/api/foods/${foodId}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) {
+              return res.text().then((text) => {
+                throw new Error(text || "Lỗi xóa món");
+              });
+            }
+            return res.text();
+          })
+          .then(() => {
+            const foodEditorMessage =
+              document.getElementById("foodEditorMessage");
+            foodEditorMessage.textContent = "Đã xóa món";
+            loadFoods();
+            setTimeout(() => {
+              foodEditorMessage.textContent = "";
+            }, 5000);
+          })
+          .catch((error) => {
+            console.error("Lỗi xóa món:", error);
+            alert(`Xóa món thất bại: ${error.message}`);
+          });
+      }
+
+      function submitNewFood() {
+        const name = document.getElementById("foodName").value.trim();
+        const price = parseFloat(document.getElementById("foodPrice").value);
+        const image = document.getElementById("foodImage").value.trim();
+        const category = document.getElementById("foodCategory").value.trim();
+        const messageEl = document.getElementById("addFoodMessage");
+
+        if (!name || !image || Number.isNaN(price) || price < 0) {
+          alert("Vui lòng nhập đầy đủ tên món, giá hợp lệ và đường dẫn ảnh.");
+          return;
+        }
+
+        fetch("/api/foods", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            price,
+            image,
+            category,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok) {
+              return res.text().then((text) => {
+                throw new Error(text || "Lỗi thêm món");
+              });
+            }
+            return res.json();
+          })
+          .then((createdFood) => {
+            messageEl.textContent = `Đã thêm món: ${createdFood.name}`;
+            document.getElementById("addFoodForm").reset();
+            loadFoods();
+            setTimeout(() => {
+              messageEl.textContent = "";
+            }, 5000);
+          })
+          .catch((error) => {
+            console.error("Lỗi thêm món:", error);
+            alert(`Thêm món thất bại: ${error.message}`);
+          });
       }
     </script>
   </body>

@@ -208,6 +208,24 @@ body::before {
   box-shadow: 0 8px 20px rgba(255, 122, 24, 0.2);
 }
 
+/* filter-btn used in toolbar */
+.filter-btn,
+.sort-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.filter-btn.active,
+.sort-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  border-color: var(--primary);
+}
+
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
