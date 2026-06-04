@@ -12,27 +12,27 @@ public class QRCodeGenerator {
 
     public static void main(String[] args) throws Exception {
 
-        String url =
-                "http://localhost:8080/index.html?table=1";
-
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
 
-        BitMatrix bitMatrix = qrCodeWriter.encode(
-                url,
-                BarcodeFormat.QR_CODE,
-                300,
-                300
-        );
+        for (int table = 1; table <= 7; table++) {
+            String url = "http://localhost:8080/index.html?table=" + table;
+            BitMatrix bitMatrix = qrCodeWriter.encode(
+                    url,
+                    BarcodeFormat.QR_CODE,
+                    300,
+                    300
+            );
 
-        Path path = FileSystems.getDefault()
-                .getPath("table1.png");
+            Path path = FileSystems.getDefault()
+                    .getPath("table" + table + ".png");
 
-        MatrixToImageWriter.writeToPath(
-                bitMatrix,
-                "PNG",
-                path
-        );
+            MatrixToImageWriter.writeToPath(
+                    bitMatrix,
+                    "PNG",
+                    path
+            );
 
-        System.out.println("Tạo QR thành công");
+            System.out.println("Tạo QR cho " + url + " -> " + path);
+        }
     }
 }
