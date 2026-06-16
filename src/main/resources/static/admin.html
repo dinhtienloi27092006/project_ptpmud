@@ -390,7 +390,7 @@
               div.innerHTML = `
                 <div class="order-header">
                   <h2>Bàn: ${order.table.tableNumber}</h2>
-                  <button class="checkout-btn" onclick="openPaymentOptions(${order.id})">💳 Thanh toán</button>
+                  <button class="checkout-btn" onclick="openPaymentOptions(${order.id}, ${order.table.tableNumber})">💳 Thanh toán</button>
                 </div>
                 ${itemsHtml}
                 <h3>Tổng tiền: ${order.totalPrice.toLocaleString()} đ</h3>
@@ -418,8 +418,11 @@
 
       let adminCurrentPaymentOrderId = null;
 
-      function openPaymentOptions(orderId) {
+      let adminCurrentPaymentTableNumber = null;
+
+      function openPaymentOptions(orderId, tableNumber) {
         adminCurrentPaymentOrderId = orderId;
+        adminCurrentPaymentTableNumber = tableNumber;
         document.getElementById("paymentInfo").textContent =
           "Chọn một phương thức thanh toán cho đơn này.";
         document.getElementById("paymentQrContainer").style.display = "none";
@@ -454,6 +457,7 @@
           .then(() => {
             alert("Thanh toán tiền mặt thành công!");
             closeAdminPaymentModal();
+            notifyPaymentUpdate();
             loadOrders();
           })
           .catch((error) => {
@@ -513,6 +517,7 @@
           .then((message) => {
             alert(message || "Thanh toán chuyển khoản đã được xác nhận");
             closeAdminPaymentModal();
+            notifyPaymentUpdate();
             loadOrders();
           })
           .catch((error) => {
@@ -523,6 +528,25 @@
 
       function closeAdminPaymentModal() {
         document.getElementById("paymentModal").classList.remove("open");
+      }
+
+      function notifyPaymentUpdate() {
+        if (typeof BroadcastChannel !== "undefined") {
+          const channel = new BroadcastChannel("restaurant-payment");
+          channel.postMessage({
+            type: "PAYMENT_SUCCESS",
+            tableNumber: adminCurrentPaymentTableNumber,
+          });
+          channel.close();
+        } else {
+          localStorage.setItem(
+            "restaurant-payment",
+            JSON.stringify({
+              tableNumber: adminCurrentPaymentTableNumber,
+              timestamp: Date.now(),
+            }),
+          );
+        }
       }
 
       function toggleDone(itemId, done) {

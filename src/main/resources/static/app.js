@@ -419,6 +419,43 @@ function loadPendingOrderForTable() {
     });
 }
 
+function clearPaidItems() {
+  const hadPaidItems = cart.some((item) => item.ordered);
+  if (!hadPaidItems) {
+    return;
+  }
+
+  cart = cart.filter((item) => !item.ordered);
+  currentOrderId = null;
+  renderCart();
+  alert("Đơn hàng đã được thanh toán. Giỏ hàng đã được cập nhật.");
+}
+
+if (typeof BroadcastChannel !== "undefined") {
+  const paymentChannel = new BroadcastChannel("restaurant-payment");
+  paymentChannel.onmessage = (event) => {
+    if (
+      event.data?.type === "PAYMENT_SUCCESS" &&
+      event.data.tableNumber == tableId
+    ) {
+      clearPaidItems();
+    }
+  };
+} else {
+  window.addEventListener("storage", (event) => {
+    if (event.key === "restaurant-payment") {
+      try {
+        const data = JSON.parse(event.newValue || event.oldValue || "{}");
+        if (data.tableNumber == tableId) {
+          clearPaidItems();
+        }
+      } catch (error) {
+        console.warn("Không parse được dữ liệu thanh toán:", error);
+      }
+    }
+  });
+}
+
 function notifyOrderUpdate() {
   if (typeof BroadcastChannel !== "undefined") {
     const channel = new BroadcastChannel("restaurant-order");
