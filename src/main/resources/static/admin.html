@@ -139,6 +139,69 @@
         align-items: center;
         margin-bottom: 15px;
       }
+
+      .payment-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+      }
+
+      .payment-modal.open {
+        display: flex;
+      }
+
+      .payment-modal-content {
+        background: white;
+        max-width: 520px;
+        width: 100%;
+        border-radius: 14px;
+        padding: 24px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
+      }
+
+      .payment-modal-content h2 {
+        margin-top: 0;
+      }
+
+      .modal-actions {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .payment-choice-btn {
+        flex: 1 1 180px;
+        padding: 12px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        cursor: pointer;
+      }
+
+      .payment-choice-btn.cash {
+        background: #4caf50;
+        color: white;
+      }
+
+      .payment-choice-btn.transfer {
+        background: #1976d2;
+        color: white;
+      }
+
+      .payment-close-btn {
+        background: #888;
+        color: white;
+      }
+
+      .payment-result {
+        margin-top: 16px;
+      }
     </style>
   </head>
 
@@ -223,6 +286,71 @@
 
     <div id="orders"></div>
 
+    <div id="paymentModal" class="payment-modal">
+      <div class="payment-modal-content">
+        <button
+          class="checkout-btn payment-close-btn"
+          style="float: right"
+          onclick="closeAdminPaymentModal()"
+        >
+          ×
+        </button>
+        <h2>Chọn phương thức thanh toán</h2>
+        <div id="paymentInfo" class="payment-result">
+          Chọn một phương thức thanh toán cho đơn này.
+        </div>
+        <div class="modal-actions" style="margin-top: 16px">
+          <button
+            class="payment-choice-btn cash"
+            onclick="payCash(adminCurrentPaymentOrderId)"
+          >
+            Tiền mặt
+          </button>
+          <button
+            class="payment-choice-btn transfer"
+            onclick="payTransfer(adminCurrentPaymentOrderId)"
+          >
+            Chuyển khoản
+          </button>
+        </div>
+        <div
+          id="paymentQrContainer"
+          style="display: none; margin-top: 20px; text-align: center"
+        >
+          <p id="adminPaymentAmountText"></p>
+          <img
+            id="adminPaymentQrImage"
+            src=""
+            alt="Mã QR MoMo"
+            style="
+              max-width: 100%;
+              height: auto;
+              border: 1px solid #ddd;
+              border-radius: 12px;
+            "
+          />
+          <p id="adminPaymentLinkText"></p>
+          <div
+            class="modal-actions"
+            style="justify-content: center; margin-top: 14px"
+          >
+            <button
+              class="payment-choice-btn transfer"
+              onclick="confirmAdminMomoPayment()"
+            >
+              Xác nhận đã chuyển
+            </button>
+            <button
+              class="payment-choice-btn payment-close-btn"
+              onclick="closeAdminPaymentModal()"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       function loadOrders() {
         fetch("/api/orders")
@@ -262,7 +390,7 @@
               div.innerHTML = `
                 <div class="order-header">
                   <h2>Bàn: ${order.table.tableNumber}</h2>
-                  <button class="checkout-btn" onclick="checkoutOrder(${order.id})">💳 Thanh toán</button>
+                  <button class="checkout-btn" onclick="openPaymentOptions(${order.id})">💳 Thanh toán</button>
                 </div>
                 ${itemsHtml}
                 <h3>Tổng tiền: ${order.totalPrice.toLocaleString()} đ</h3>
@@ -288,31 +416,113 @@
           `📅 Cập nhật lúc: ${timeString}`;
       }
 
-      function checkoutOrder(orderId) {
-        if (confirm("Xác nhận thanh toán cho bàn này?")) {
-          fetch(`/api/orders/${orderId}`, {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          })
-            .then((res) => {
-              if (!res.ok) {
-                return res.text().then((text) => {
-                  throw new Error(`Lỗi ${res.status}: ${text}`);
-                });
-              }
-              return res.text();
-            })
-            .then(() => {
-              alert("Thanh toán thành công!");
-              loadOrders();
-            })
-            .catch((error) => {
-              console.error("Chi tiết lỗi:", error);
-              alert(`Thanh toán thất bại: ${error.message}`);
-            });
+      let adminCurrentPaymentOrderId = null;
+
+      function openPaymentOptions(orderId) {
+        adminCurrentPaymentOrderId = orderId;
+        document.getElementById("paymentInfo").textContent =
+          "Chọn một phương thức thanh toán cho đơn này.";
+        document.getElementById("paymentQrContainer").style.display = "none";
+        document.getElementById("adminPaymentAmountText").textContent = "";
+        document.getElementById("adminPaymentQrImage").src = "";
+        document.getElementById("adminPaymentLinkText").innerHTML = "";
+        document.getElementById("paymentModal").classList.add("open");
+      }
+
+      function payCash(orderId) {
+        if (!orderId) {
+          alert("Không tìm thấy order để thanh toán.");
+          return;
         }
+        if (!confirm("Xác nhận thanh toán tiền mặt cho đơn này?")) {
+          return;
+        }
+        fetch(`/api/orders/${orderId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((res) => {
+            if (!res.ok) {
+              return res.text().then((text) => {
+                throw new Error(`Lỗi ${res.status}: ${text}`);
+              });
+            }
+            return res.text();
+          })
+          .then(() => {
+            alert("Thanh toán tiền mặt thành công!");
+            closeAdminPaymentModal();
+            loadOrders();
+          })
+          .catch((error) => {
+            console.error("Chi tiết lỗi:", error);
+            alert(`Thanh toán thất bại: ${error.message}`);
+          });
+      }
+
+      function payTransfer(orderId) {
+        if (!orderId) {
+          alert("Không tìm thấy order để thanh toán.");
+          return;
+        }
+        fetch(`/api/orders/${orderId}/payment`)
+          .then((res) => {
+            if (!res.ok) {
+              return res.text().then((text) => {
+                throw new Error(text || "Lỗi tạo yêu cầu thanh toán");
+              });
+            }
+            return res.json();
+          })
+          .then((data) => {
+            document.getElementById("paymentInfo").textContent =
+              "Quét mã MoMo hoặc mở liên kết để chuyển khoản.";
+            document.getElementById("paymentQrContainer").style.display =
+              "block";
+            document.getElementById("adminPaymentAmountText").textContent =
+              `Số tiền cần thanh toán: ${data.amount.toLocaleString()} đ`;
+            document.getElementById("adminPaymentQrImage").src =
+              data.qrCodeDataUrl;
+            document.getElementById("adminPaymentLinkText").innerHTML =
+              `Nếu mã QR không quét được, mở liên kết MoMo: <a href="${data.payUrl}" target="_blank" rel="noreferrer">Mở MoMo</a>`;
+          })
+          .catch((error) => {
+            console.error("Lỗi tạo thanh toán chuyển khoản:", error);
+            alert(`Lỗi tạo yêu cầu chuyển khoản: ${error.message}`);
+          });
+      }
+
+      function confirmAdminMomoPayment() {
+        if (!adminCurrentPaymentOrderId) {
+          alert("Không tìm thấy đơn thanh toán để xác nhận.");
+          return;
+        }
+        fetch(`/api/orders/${adminCurrentPaymentOrderId}/payment/notify`, {
+          method: "POST",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              return response.text().then((text) => {
+                throw new Error(text || "Xác nhận thanh toán thất bại");
+              });
+            }
+            return response.text();
+          })
+          .then((message) => {
+            alert(message || "Thanh toán chuyển khoản đã được xác nhận");
+            closeAdminPaymentModal();
+            loadOrders();
+          })
+          .catch((error) => {
+            console.error("Lỗi xác nhận thanh toán:", error);
+            alert("Xác nhận thanh toán thất bại: " + error.message);
+          });
+      }
+
+      function closeAdminPaymentModal() {
+        document.getElementById("paymentModal").classList.remove("open");
       }
 
       function toggleDone(itemId, done) {

@@ -90,38 +90,15 @@
       <aside class="cart-box">
         <div class="section-heading">
           <h2>🛒 Giỏ hàng</h2>
-          <p>Kiểm tra lại đơn của bạn trước khi thanh toán.</p>
+          <p>
+            Kiểm tra lại đơn của bạn. Thanh toán sẽ được thực hiện bởi admin.
+          </p>
         </div>
         <div id="cart" class="cart-list"></div>
         <div class="cart-summary">
           <h3 id="totalPrice">Tổng: 0 đ</h3>
           <div class="cart-actions">
             <button class="primary" onclick="submitOrder()">Đặt món</button>
-            <button class="secondary" onclick="payment()">Thanh toán</button>
-          </div>
-        </div>
-
-        <div id="paymentModal" class="payment-modal">
-          <div class="payment-modal-content">
-            <button class="close-modal" onclick="closePaymentModal()">×</button>
-            <h2>Quét mã MoMo để thanh toán</h2>
-            <p id="paymentAmountText">
-              Số tiền cần thanh toán sẽ hiển thị ở đây.
-            </p>
-            <img id="paymentQrImage" src="" alt="Mã QR MoMo" />
-            <p id="paymentLinkText"></p>
-            <div class="modal-actions">
-              <button class="secondary" onclick="confirmMomoPayment()">
-                Đã thanh toán
-              </button>
-              <button class="primary" onclick="closePaymentModal()">
-                Đóng
-              </button>
-            </div>
-            <p class="payment-help">
-              Quét mã với ứng dụng MoMo. Nếu mã QR không hiển thị, bạn có thể mở
-              liên kết MoMo bên trên.
-            </p>
           </div>
         </div>
       </aside>

@@ -2,10 +2,6 @@ const menuDiv = document.getElementById("menu");
 const cartDiv = document.getElementById("cart");
 const totalPriceDiv = document.getElementById("totalPrice");
 const tableNumberElement = document.getElementById("tableNumber");
-const paymentModal = document.getElementById("paymentModal");
-const paymentAmountText = document.getElementById("paymentAmountText");
-const paymentQrImage = document.getElementById("paymentQrImage");
-const paymentLinkText = document.getElementById("paymentLinkText");
 
 console.log("app.js loaded");
 
@@ -25,7 +21,6 @@ const DEFAULT_CATEGORIES = [
   "Combo",
 ];
 let currentOrderId = null;
-let currentPaymentOrderId = null;
 
 /*
     Lấy tableId từ URL
@@ -406,107 +401,6 @@ function submitOrder() {
     });
 }
 
-function payment() {
-  const orderedItems = cart.filter((item) => item.ordered);
-  if (orderedItems.length === 0) {
-    alert("Không có món để thanh toán. Hãy đặt hàng trước!");
-    return;
-  }
-
-  getPendingOrderForTable()
-    .then((orderId) => {
-      if (!orderId) {
-        alert("Không tìm thấy đơn hàng đang chờ. Vui lòng đặt món trước.");
-        return;
-      }
-
-      return fetch(`/api/orders/${orderId}/payment`);
-    })
-    .then((response) => {
-      if (!response) return;
-      if (!response.ok) {
-        return response.text().then((text) => {
-          throw new Error(text || "Lỗi tạo yêu cầu thanh toán");
-        });
-      }
-      return response.json();
-    })
-    .then((data) => {
-      if (!data) return;
-      currentPaymentOrderId = currentOrderId;
-      showPaymentModal(data);
-    })
-    .catch((error) => {
-      console.error("Lỗi thanh toán:", error);
-      alert("Thanh toán thất bại: " + error.message);
-    });
-}
-
-function getPendingOrderForTable() {
-  if (currentOrderId) {
-    return Promise.resolve(currentOrderId);
-  }
-
-  return fetch(`/api/orders/tables/${tableId}/pending`)
-    .then((response) => {
-      if (!response.ok) {
-        return null;
-      }
-      return response.json();
-    })
-    .then((order) => {
-      if (order && order.id) {
-        currentOrderId = order.id;
-        return currentOrderId;
-      }
-      return null;
-    })
-    .catch(() => null);
-}
-
-function showPaymentModal(payment) {
-  paymentAmountText.innerText = `Số tiền cần thanh toán: ${payment.amount.toLocaleString()} đ`;
-  paymentQrImage.src = payment.qrCodeDataUrl;
-  paymentLinkText.innerHTML = `Nếu mã QR không quét được, mở liên kết MoMo: <a href="${payment.payUrl}" target="_blank" rel="noreferrer">Mở MoMo</a>`;
-  paymentModal.classList.add("open");
-}
-
-function closePaymentModal() {
-  paymentModal.classList.remove("open");
-}
-
-function confirmMomoPayment() {
-  if (!currentPaymentOrderId) {
-    alert("Không tìm thấy đơn thanh toán để xác nhận.");
-    return;
-  }
-
-  fetch(`/api/orders/${currentPaymentOrderId}/payment/notify`, {
-    method: "POST",
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response.text().then((text) => {
-          throw new Error(text || "Xác nhận thanh toán thất bại");
-        });
-      }
-      return response.text();
-    })
-    .then((message) => {
-      alert(message || "Thanh toán đã được xác nhận");
-      cart = cart.filter((item) => !item.ordered);
-      currentOrderId = null;
-      currentPaymentOrderId = null;
-      renderCart();
-      closePaymentModal();
-      notifyPaymentUpdate();
-    })
-    .catch((error) => {
-      console.error("Lỗi xác nhận thanh toán:", error);
-      alert("Xác nhận thanh toán thất bại: " + error.message);
-    });
-}
-
 function loadPendingOrderForTable() {
   fetch(`/api/orders/tables/${tableId}/pending`)
     .then((response) => {
@@ -555,9 +449,6 @@ if (typeof window !== "undefined") {
   window.handleCategoryButtonClick = handleCategoryButtonClick;
   window.filterFoods = filterFoods;
   window.submitOrder = submitOrder;
-  window.payment = payment;
-  window.closePaymentModal = closePaymentModal;
-  window.confirmMomoPayment = confirmMomoPayment;
   window.addToCart = addToCart;
   window.increaseQuantity = increaseQuantity;
   window.decreaseQuantity = decreaseQuantity;
