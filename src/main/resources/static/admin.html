@@ -282,9 +282,32 @@
     >
       <span id="updateStatus">🔄 Reload khi có đơn hàng mới...</span>
       <span id="lastUpdated" style="margin-left: 20px; color: #666"></span>
+      <button
+        id="toggleHistoryButton"
+        class="checkout-btn"
+        style="margin-left: 20px; background: #1976d2"
+        onclick="togglePaymentHistory()"
+      >
+        Xem lịch sử thanh toán
+      </button>
     </div>
 
     <div id="orders"></div>
+
+    <section
+      id="paymentHistorySection"
+      class="form-card"
+      style="margin-top: 20px; display: none"
+    >
+      <h2>🧾 Lịch sử thanh toán hôm nay</h2>
+      <div
+        id="paymentHistorySummary"
+        style="margin-bottom: 12px; color: #333"
+      ></div>
+      <div id="paymentHistoryList">
+        <p>Đang tải lịch sử thanh toán...</p>
+      </div>
+    </section>
 
     <div id="paymentModal" class="payment-modal">
       <div class="payment-modal-content">
@@ -402,6 +425,12 @@
 
             // Cập nhật thời gian lần cuối
             updateLastUpdatedTime();
+            const historySection = document.getElementById(
+              "paymentHistorySection",
+            );
+            if (historySection && historySection.style.display === "block") {
+              loadPaymentHistory();
+            }
           })
           .catch((error) => {
             console.error(error);
@@ -440,11 +469,8 @@
         if (!confirm("Xác nhận thanh toán tiền mặt cho đơn này?")) {
           return;
         }
-        fetch(`/api/orders/${orderId}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
+        fetch(`/api/orders/${orderId}/payment/cash`, {
+          method: "POST",
         })
           .then((res) => {
             if (!res.ok) {
@@ -455,7 +481,9 @@
             return res.text();
           })
           .then(() => {
-            alert("Thanh toán tiền mặt thành công!");
+            alert(
+              `Thanh toán tiền mặt bàn ${adminCurrentPaymentTableNumber} thành công!`,
+            );
             closeAdminPaymentModal();
             notifyPaymentUpdate();
             loadOrders();
@@ -515,7 +543,10 @@
             return response.text();
           })
           .then((message) => {
-            alert(message || "Thanh toán chuyển khoản đã được xác nhận");
+            alert(
+              message ||
+                `Thanh toán chuyển khoản bàn ${adminCurrentPaymentTableNumber} đã được xác nhận`,
+            );
             closeAdminPaymentModal();
             notifyPaymentUpdate();
             loadOrders();
@@ -576,6 +607,72 @@
       loadOrders();
       setInterval(loadOrders, 8000);
 
+      function togglePaymentHistory() {
+        const section = document.getElementById("paymentHistorySection");
+        const button = document.getElementById("toggleHistoryButton");
+
+        if (section.style.display === "none" || section.style.display === "") {
+          section.style.display = "block";
+          button.textContent = "Ẩn lịch sử thanh toán";
+          loadPaymentHistory();
+        } else {
+          section.style.display = "none";
+          button.textContent = "Xem lịch sử thanh toán";
+        }
+      }
+
+      function loadPaymentHistory() {
+        fetch("/api/orders/payment-history")
+          .then((res) => {
+            if (!res.ok) {
+              return res.text().then((text) => {
+                throw new Error(text || "Lỗi tải lịch sử thanh toán");
+              });
+            }
+            return res.json();
+          })
+          .then((data) => {
+            const summaryEl = document.getElementById("paymentHistorySummary");
+            const listEl = document.getElementById("paymentHistoryList");
+
+            summaryEl.textContent = `Tổng tiền hôm nay: ${data.totalToday.toLocaleString()} đ`;
+
+            if (!data.history || !data.history.length) {
+              listEl.innerHTML = "<p>Chưa có lịch sử thanh toán hôm nay.</p>";
+              return;
+            }
+
+            const rows = data.history
+              .map((entry) => {
+                const items = (entry.items || [])
+                  .map(
+                    (item) =>
+                      `<li>${item.foodName} x ${item.quantity} = ${item.subtotal.toLocaleString()} đ</li>`,
+                  )
+                  .join("");
+
+                return `
+                  <div class="order-card">
+                    <div class="order-header">
+                      <h3>Bàn ${entry.tableNumber}</h3>
+                      <span>${new Date(entry.paidAt).toLocaleTimeString("vi-VN")}</span>
+                    </div>
+                    <p><strong>${entry.paymentMethod}</strong> • Tổng: ${entry.totalPrice.toLocaleString()} đ</p>
+                    <ul style="margin-top: 10px; padding-left: 18px">${items}</ul>
+                  </div>
+                `;
+              })
+              .join("");
+
+            listEl.innerHTML = rows;
+          })
+          .catch((error) => {
+            console.error("Lỗi tải lịch sử thanh toán:", error);
+            document.getElementById("paymentHistoryList").innerHTML =
+              "<p>Lỗi tải lịch sử thanh toán.</p>";
+          });
+      }
+
       // Listen để reload ngay khi có đơn hàng mới hoặc thanh toán thành công từ app.js
       if (typeof BroadcastChannel !== "undefined") {
         const orderChannel = new BroadcastChannel("restaurant-order");
@@ -589,7 +686,10 @@
         const paymentChannel = new BroadcastChannel("restaurant-payment");
         paymentChannel.onmessage = (event) => {
           if (event.data.type === "PAYMENT_SUCCESS") {
-            console.log("Thanh toán thành công từ bàn:", event.data.tableId);
+            console.log(
+              "Thanh toán thành công từ bàn:",
+              event.data.tableNumber,
+            );
             loadOrders();
           }
         };

@@ -1,5 +1,6 @@
 package com.example.restaurant.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,9 +12,12 @@ import com.example.restaurant.dto.OrderRequest;
 import com.example.restaurant.entity.Food;
 import com.example.restaurant.entity.Order;
 import com.example.restaurant.entity.OrderItem;
+import com.example.restaurant.entity.PaymentHistory;
+import com.example.restaurant.entity.PaymentHistoryItem;
 import com.example.restaurant.entity.RestaurantTable;
 import com.example.restaurant.repository.FoodRepository;
 import com.example.restaurant.repository.OrderRepository;
+import com.example.restaurant.repository.PaymentHistoryRepository;
 import com.example.restaurant.repository.RestaurantTableRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +29,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final FoodRepository foodRepository;
     private final RestaurantTableRepository tableRepository;
+    private final PaymentHistoryRepository paymentHistoryRepository;
 
     @Transactional
     public Order createOrder(OrderRequest request) {
@@ -79,7 +84,7 @@ public class OrderService {
     }
 
     @Transactional
-    public Order confirmPayment(Integer orderId) {
+    public Order confirmPayment(Integer orderId, String paymentMethod) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy order"));
 
@@ -87,6 +92,24 @@ public class OrderService {
             throw new IllegalStateException("Order không ở trạng thái PENDING");
         }
 
+        PaymentHistory history = new PaymentHistory();
+        history.setTableNumber(order.getTable().getTableNumber());
+        history.setPaymentMethod(paymentMethod);
+        history.setTotalPrice(order.getTotalPrice());
+        history.setPaidAt(LocalDateTime.now());
+        history.setNote("Thanh toán đơn hàng");
+
+        if (order.getItems() != null) {
+            order.getItems().forEach(orderItem -> {
+                PaymentHistoryItem historyItem = new PaymentHistoryItem();
+                historyItem.setFoodName(orderItem.getFood().getName());
+                historyItem.setQuantity(orderItem.getQuantity());
+                historyItem.setSubtotal(orderItem.getSubtotal());
+                history.addItem(historyItem);
+            });
+        }
+
+        paymentHistoryRepository.save(history);
         orderRepository.delete(order);
         return order;
     }

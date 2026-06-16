@@ -1,0 +1,12 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100   127    0   127    0     0   4875      0 --:--:-- --:--:-- --:--:--  5080HTTP/1.1 500 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 16 Jun 2026 08:53:47 GMT
+Connection: close
+
+{"timestamp":"2026-06-16T08:53:47.670+00:00","status":500,"error":"Internal Server Error","path":"/api/orders/40/payment/cash"}

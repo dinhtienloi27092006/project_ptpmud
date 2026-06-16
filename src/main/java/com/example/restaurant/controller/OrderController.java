@@ -1,9 +1,12 @@
 package com.example.restaurant.controller;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +24,7 @@ import com.example.restaurant.entity.Order;
 import com.example.restaurant.entity.OrderItem;
 import com.example.restaurant.repository.OrderItemRepository;
 import com.example.restaurant.repository.OrderRepository;
+import com.example.restaurant.repository.PaymentHistoryRepository;
 import com.example.restaurant.service.MomoService;
 import com.example.restaurant.service.OrderService;
 
@@ -37,6 +41,8 @@ public class OrderController {
     private final OrderRepository orderRepository;
 
     private final OrderItemRepository orderItemRepository;
+
+    private final PaymentHistoryRepository paymentHistoryRepository;
 
     private final MomoService momoService;
 
@@ -74,8 +80,14 @@ public class OrderController {
 
     @PostMapping("/{orderId}/payment/notify")
     public String handlePaymentNotify(@PathVariable Integer orderId) {
-        orderService.confirmPayment(orderId);
-        return "Thanh toán thành công cho order " + orderId;
+        var order = orderService.confirmPayment(orderId, "MOMO");
+        return "Thanh toán thành công bàn " + order.getTable().getTableNumber();
+    }
+
+    @PostMapping("/{orderId}/payment/cash")
+    public String handleCashPayment(@PathVariable Integer orderId) {
+        var order = orderService.confirmPayment(orderId, "CASH");
+        return "Thanh toán tiền mặt bàn " + order.getTable().getTableNumber() + " thành công";
     }
 
     @PostMapping("/momo/notify")
@@ -91,8 +103,8 @@ public class OrderController {
         }
 
         if (resultCode != null && resultCode == 0) {
-            orderService.confirmPayment(orderId);
-            return "Thanh toán MoMo đã được xác nhận cho order " + orderId;
+            var order = orderService.confirmPayment(orderId, "MOMO");
+            return "Thanh toán MoMo đã được xác nhận cho bàn " + order.getTable().getTableNumber();
         }
 
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thanh toán MoMo không thành công");
@@ -113,6 +125,23 @@ public class OrderController {
             }
         }
         return null;
+    }
+
+    @GetMapping("/payment-history")
+    @Transactional(readOnly = true)
+    public Map<String, Object> getPaymentHistory() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime from = today.atStartOfDay();
+        LocalDateTime to = from.plusDays(1);
+
+        var history = paymentHistoryRepository.findByPaidAtBetween(from, to);
+        double totalToday = history.stream()
+                .mapToDouble(item -> item.getTotalPrice() != null ? item.getTotalPrice() : 0.0)
+                .sum();
+
+        return Map.of(
+                "history", history,
+                "totalToday", totalToday);
     }
 
     @PutMapping("/items/{itemId}/done")
